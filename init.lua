@@ -23,14 +23,13 @@ end
 ----  Register callbacks
 -------------------------------------------
 minetest.register_on_craft(function(itemstack, player, old_craft_grid, craft_inv)
-	for idx, new_stack in ipairs(craft_inv:get_list("craft")) do
-		local new_stack_name = new_stack:get_name()
-		local old_stack_name = old_craft_grid[idx]:get_name()
-		local max_dur = crafting_durability_lists[new_stack_name] or 0
+	local new_craft_grid = craft_inv:get_list("craft")
+	for idx, old_stack in ipairs(old_craft_grid) do
+		local max_dur = crafting_durability_lists[old_stack:get_name()] or 0
 
-		if (max_dur > 0) and (old_stack_name == new_stack_name) then
-			local old_stack = old_craft_grid[idx]
-			local meta = old_stack:get_meta()
+		if (max_dur > 0) and (new_craft_grid[idx]:get_name() == "") then
+			local new_stack = ItemStack(old_stack)
+			local meta = new_stack:get_meta()
  			local dur = meta:get_int("crafting_durability")
  			if dur == 0 then
  				dur = max_dur - 1
@@ -40,11 +39,11 @@ minetest.register_on_craft(function(itemstack, player, old_craft_grid, craft_inv
 
 			if dur > 0 then
 				meta:set_int("crafting_durability", dur)
-				old_stack:add_wear(65535 / max_dur)
+				new_stack:add_wear(65535 / max_dur)
 			else
-				old_stack = ItemStack(nil)
+				new_stack = ItemStack(nil)
 			end
-			craft_inv:set_stack("craft", idx, old_stack)
+			craft_inv:set_stack("craft", idx, new_stack)
 		end
 	end
 end)
