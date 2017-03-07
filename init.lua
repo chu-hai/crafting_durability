@@ -1,5 +1,6 @@
 local wear_table = {}
 local diff_table = {}
+local max_dur_table = {}
 
 local max_durability = minetest.setting_get("crafting_durability.max_durability_limit") or 1000
 
@@ -23,7 +24,7 @@ local function register_crafting_durability()
 		end
 	end
 
-	-- Create pre-calced wear value table for target tools
+	-- Create pre-calced wear value table and durability table
 	for name, def in pairs(minetest.registered_tools) do
 		local dur = tonumber(def.crafting_durability) or 0
 		dur = math.min(dur, max_durability)
@@ -34,6 +35,7 @@ local function register_crafting_durability()
 				wear_table[name] = math.floor(65535 / dur + 1)
 			end
 		end
+		max_dur_table[name] = dur
 	end
 end
 
@@ -68,8 +70,9 @@ minetest.register_on_craft(function(itemstack, player, old_craft_grid, craft_inv
 			local new_stack = ItemStack(old_stack)
 			local new_name = new_stack:get_name()
 			local cur_wear = new_stack:get_wear()
-			if cur_wear == 0 and diff_table[new_name] then
-				new_stack:set_wear(diff_table[new_name])
+			local max_dur = max_dur_table[new_name]
+			if cur_wear == 0 and diff_table[max_dur] then
+				new_stack:set_wear(diff_table[max_dur])
 			end
 			new_stack:add_wear(add_wear)
 
