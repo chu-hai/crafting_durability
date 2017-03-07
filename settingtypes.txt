@@ -1,0 +1,3 @@
+#    Limit of maximum durability value.
+crafting_durability.max_durability_limit (Limit of maximum durability value) int 1000 2 65535
+

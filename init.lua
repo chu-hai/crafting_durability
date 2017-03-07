@@ -1,19 +1,38 @@
-local crafting_durability_lists = {}
+local wear_table = {}
+local diff_table = {}
+
+local max_durability = minetest.setting_get("crafting_durability.max_durability_limit") or 1000
 
 -------------------------------------------
 ----  Local functions
 -------------------------------------------
 local function register_crafting_durability()
-	local stack = ItemStack("default:stone")
-	if not stack.get_meta then
-		minetest.log("warning", "[Crafting Durability] Disabled. (ItemStackMetaRef is not implemented)")
-		return
+	-- Create diff value table
+	for dur = 2, max_durability do
+		local wear
+		if dur > 256 then
+			wear = math.floor(65535 / (dur - 1))
+		else
+			wear = math.floor(65535 / dur + 1)
+		end
+
+		local total = wear * dur
+		local diff = 65536 - total
+		if diff > 0 then
+			diff_table[dur] = diff
+		end
 	end
 
-	for k, v in pairs(minetest.registered_tools) do
-		local durability = tonumber(v.crafting_durability) or 0
-		if durability > 0 and not v.tool_capabilities then
-			crafting_durability_lists[k] = math.min(durability, 65535)
+	-- Create pre-calced wear value table for target tools
+	for name, def in pairs(minetest.registered_tools) do
+		local dur = tonumber(def.crafting_durability) or 0
+		dur = math.min(dur, max_durability)
+		if dur > 1 and not def.tool_capabilities then
+			if dur > 256 then
+				wear_table[name] = math.floor(65535 / (dur - 1))
+			else
+				wear_table[name] = math.floor(65535 / dur + 1)
+			end
 		end
 	end
 end
@@ -25,58 +44,36 @@ end
 minetest.register_on_craft(function(itemstack, player, old_craft_grid, craft_inv)
 	local output_name = itemstack:get_name()
 	local check_list = {}
-	local name_cache = ""
 	local item_kind = 0
 
-	if crafting_durability_lists[output_name] then
+	if wear_table[output_name] then
 		for _, old_stack in ipairs(old_craft_grid) do
 			local name = old_stack:get_name()
 			if name ~= "" then
 				if not check_list[name] then
 					check_list[name] = true
-					name_cache = name
 					item_kind = item_kind + 1
 				end
 			end
 		end
 	end
+	if (item_kind == 1) and (output_name == next(check_list, nil)) then
+		return itemstack
+	end
 
-	if (item_kind == 1) and (output_name == name_cache) then
-		-- for Repair craft
-		local total_dur = 0
-		local max_dur = crafting_durability_lists[name_cache]
-		for _, old_stack in ipairs(old_craft_grid) do
-			local name = old_stack:get_name()
-			if name ~= "" then
-				local dur = old_stack:get_meta():get_int("crafting_durability")
-				total_dur = total_dur + (dur == 0 and max_dur or dur)
+	local new_craft_grid = craft_inv:get_list("craft")
+	for idx, old_stack in ipairs(old_craft_grid) do
+		local add_wear = wear_table[old_stack:get_name()] or 0
+		if (add_wear > 0) and (new_craft_grid[idx]:get_name() == "") then
+			local new_stack = ItemStack(old_stack)
+			local new_name = new_stack:get_name()
+			local cur_wear = new_stack:get_wear()
+			if cur_wear == 0 and diff_table[new_name] then
+				new_stack:set_wear(diff_table[new_name])
 			end
-		end
-		total_dur = math.min(total_dur, max_dur)
-		itemstack:get_meta():set_int("crafting_durability", total_dur)
-		itemstack:set_wear(65535 - math.floor(total_dur / max_dur * 65535))
-	else
-		-- for Normal craft
-		local new_craft_grid = craft_inv:get_list("craft")
-		for idx, old_stack in ipairs(old_craft_grid) do
-			local max_dur = crafting_durability_lists[old_stack:get_name()] or 0
+			new_stack:add_wear(add_wear)
 
-			if (max_dur > 0) and (new_craft_grid[idx]:get_name() == "") then
-				local new_stack = ItemStack(old_stack)
-				local meta = new_stack:get_meta()
-				local dur = meta:get_int("crafting_durability")
-				if dur == 0 then
-					dur = max_dur - 1
-				else
-					dur = dur - 1
-				end
-
-				if dur > 0 then
-					meta:set_int("crafting_durability", dur)
-					new_stack:add_wear(65535 / max_dur)
-				else
-					new_stack = ItemStack(nil)
-				end
+			if not new_stack:is_empty() then
 				craft_inv:set_stack("craft", idx, new_stack)
 			end
 		end
