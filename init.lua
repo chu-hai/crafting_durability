@@ -17,8 +17,7 @@ local function register_crafting_durability()
 			wear = math.floor(65535 / dur + 1)
 		end
 
-		local total = wear * dur
-		local diff = 65536 - total
+		local diff = 65536 - (wear * dur)
 		if diff > 0 then
 			diff_table[dur] = diff
 		end
@@ -68,11 +67,9 @@ minetest.register_on_craft(function(itemstack, player, old_craft_grid, craft_inv
 		local add_wear = wear_table[old_stack:get_name()] or 0
 		if (add_wear > 0) and (new_craft_grid[idx]:get_name() == "") then
 			local new_stack = ItemStack(old_stack)
-			local new_name = new_stack:get_name()
-			local cur_wear = new_stack:get_wear()
-			local max_dur = max_dur_table[new_name]
-			if cur_wear == 0 and diff_table[max_dur] then
-				new_stack:set_wear(diff_table[max_dur])
+			local diff = diff_table[max_dur_table[new_stack:get_name()]]
+			if diff and (new_stack:get_wear() == 0) then
+				new_stack:set_wear(diff)
 			end
 			new_stack:add_wear(add_wear)
 
