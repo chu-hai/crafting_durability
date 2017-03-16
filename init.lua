@@ -22,9 +22,17 @@ local function register_crafting_durability()
 		end
 	end
 
-	-- Create pre-calced wear value table and durability table
+	-- Create item attributes table
 	for name, def in pairs(minetest.registered_tools) do
-		local dur = tonumber(def.crafting_durability) or 0
+		local dur = nil
+		local tbl = nil
+		if type(def.crafting_durability) == "table" then
+			tbl = def.crafting_durability
+			dur = tonumber(tbl.durability) or 0
+		else
+			dur = tonumber(def.crafting_durability) or 0
+		end
+
 		dur = math.min(dur, max_durability)
 		if dur > 1 and not def.tool_capabilities then
 			item_attributes[name] = {}
