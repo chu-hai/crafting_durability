@@ -1,6 +1,5 @@
-local wear_table = {}
 local diff_table = {}
-local max_dur_table = {}
+local item_attributes = {}
 
 local max_durability = minetest.setting_get("crafting_durability.max_durability_limit") or 1000
 
@@ -28,13 +27,14 @@ local function register_crafting_durability()
 		local dur = tonumber(def.crafting_durability) or 0
 		dur = math.min(dur, max_durability)
 		if dur > 1 and not def.tool_capabilities then
+			item_attributes[name] = {}
 			if dur > 256 then
-				wear_table[name] = math.floor(65535 / (dur - 1))
+				item_attributes[name].add_wear = math.floor(65535 / (dur - 1))
 			else
-				wear_table[name] = math.floor(65535 / dur + 1)
+				item_attributes[name].add_wear = math.floor(65535 / dur + 1)
 			end
+			item_attributes[name].max_durability = dur
 		end
-		max_dur_table[name] = dur
 	end
 end
 
@@ -47,7 +47,7 @@ minetest.register_on_craft(function(itemstack, player, old_craft_grid, craft_inv
 	local check_list = {}
 	local item_kind = 0
 
-	if wear_table[output_name] then
+	if item_attributes[output_name] then
 		for _, old_stack in ipairs(old_craft_grid) do
 			local name = old_stack:get_name()
 			if name ~= "" then
@@ -64,14 +64,14 @@ minetest.register_on_craft(function(itemstack, player, old_craft_grid, craft_inv
 
 	local new_craft_grid = craft_inv:get_list("craft")
 	for idx, old_stack in ipairs(old_craft_grid) do
-		local add_wear = wear_table[old_stack:get_name()] or 0
-		if (add_wear > 0) and (new_craft_grid[idx]:get_name() == "") then
+		local attr = item_attributes[old_stack:get_name()]
+		if attr and (new_craft_grid[idx]:get_name() == "") then
+			local diff = diff_table[attr.max_durability]
 			local new_stack = ItemStack(old_stack)
-			local diff = diff_table[max_dur_table[new_stack:get_name()]]
 			if diff and (new_stack:get_wear() == 0) then
 				new_stack:set_wear(diff)
 			end
-			new_stack:add_wear(add_wear)
+			new_stack:add_wear(attr.add_wear)
 
 			if not new_stack:is_empty() then
 				craft_inv:set_stack("craft", idx, new_stack)
