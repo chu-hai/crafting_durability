@@ -24,7 +24,7 @@ local function register_crafting_durability()
 
 	-- Create item attributes table
 	for name, def in pairs(minetest.registered_tools) do
-		local dur = nil
+		local dur = 0
 		local tbl = nil
 		if type(def.crafting_durability) == "table" then
 			tbl = def.crafting_durability
@@ -32,16 +32,29 @@ local function register_crafting_durability()
 		else
 			dur = tonumber(def.crafting_durability) or 0
 		end
-
 		dur = math.min(dur, max_durability)
-		if dur > 1 and not def.tool_capabilities then
-			item_attributes[name] = {}
-			if dur > 256 then
-				item_attributes[name].add_wear = math.floor(65535 / (dur - 1))
-			else
-				item_attributes[name].add_wear = math.floor(65535 / dur + 1)
+
+		if (dur > 1 or tbl) and not def.tool_capabilities then
+			item_attributes[name] = {
+				add_wear = 0,
+				durability = dur,
+				need_replacements = false,
+				check_string = "",
+			}
+			local attr = item_attributes[name]
+
+			if dur > 1 then
+				if dur > 256 then
+					attr.add_wear = math.floor(65535 / (dur - 1))
+				else
+					attr.add_wear = math.floor(65535 / dur + 1)
+				end
 			end
-			item_attributes[name].durability = dur
+
+			if tbl then
+				attr.need_replacements = tbl.need_replacements or false
+				attr.check_string = tbl.need_replacements and name or ""
+			end
 		end
 	end
 end
@@ -73,7 +86,9 @@ minetest.register_on_craft(function(itemstack, player, old_craft_grid, craft_inv
 	local new_craft_grid = craft_inv:get_list("craft")
 	for idx, old_stack in ipairs(old_craft_grid) do
 		local attr = item_attributes[old_stack:get_name()]
-		if attr and (new_craft_grid[idx]:get_name() == "") then
+		if attr
+ 		and (attr.durability > 1)
+ 		and (new_craft_grid[idx]:get_name() == attr.check_string) then
 			local diff = diff_table[attr.durability]
 			local new_stack = ItemStack(old_stack)
 			if diff and (new_stack:get_wear() == 0) then
@@ -96,3 +111,4 @@ end)
 minetest.after(1, register_crafting_durability)
 
 minetest.log("action", "[Crafting Durability] Loaded!")
+
