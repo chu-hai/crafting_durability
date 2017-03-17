@@ -59,27 +59,31 @@ local function register_crafting_durability()
 	end
 end
 
+local function is_repair(output_itemname, craft_grid)
+	local check_list = {}
+	local item_kind = 0
+
+	for _, old_stack in ipairs(craft_grid) do
+		local name = old_stack:get_name()
+		if name ~= "" then
+			if not check_list[name] then
+				check_list[name] = true
+				item_kind = item_kind + 1
+			end
+		end
+	end
+	if (item_kind == 1) and (output_itemname == next(check_list, nil)) then
+		return true
+	end
+	return false
+end
+
 
 -------------------------------------------
 ----  Register callbacks
 -------------------------------------------
 minetest.register_on_craft(function(itemstack, player, old_craft_grid, craft_inv)
-	local output_name = itemstack:get_name()
-	local check_list = {}
-	local item_kind = 0
-
-	if item_attributes[output_name] then
-		for _, old_stack in ipairs(old_craft_grid) do
-			local name = old_stack:get_name()
-			if name ~= "" then
-				if not check_list[name] then
-					check_list[name] = true
-					item_kind = item_kind + 1
-				end
-			end
-		end
-	end
-	if (item_kind == 1) and (output_name == next(check_list, nil)) then
+	if is_repair(itemstack:get_name(), old_craft_grid) then
 		return itemstack
 	end
 
@@ -111,4 +115,3 @@ end)
 minetest.after(1, register_crafting_durability)
 
 minetest.log("action", "[Crafting Durability] Loaded!")
-
