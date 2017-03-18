@@ -100,9 +100,7 @@ minetest.register_on_craft(function(itemstack, player, old_craft_grid, craft_inv
 			end
 			new_stack:add_wear(attr.add_wear)
 
-			if not new_stack:is_empty() then
-				craft_inv:set_stack("craft", idx, new_stack)
-			end
+			craft_inv:set_stack("craft", idx, new_stack)
 		end
 	end
 	return itemstack
