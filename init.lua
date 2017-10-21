@@ -1,7 +1,7 @@
 local diff_table = {}
 local item_attributes = {}
 
-local max_durability = minetest.setting_get("crafting_durability.max_durability_limit") or 1000
+local max_durability = tonumber(minetest.settings:get("crafting_durability.max_durability_limit")) or 1000
 
 -------------------------------------------
 ----  Local functions
